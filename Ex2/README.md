@@ -1,5 +1,6 @@
 # Modify Canny Edge Detection Using CImg Library
 The directory "Code0" includes the source code that has been modified by using the CImg library.
+
 The BMP images in the directory "test_data" are used for testing. The directory "result_data" store the output BMP images.
 ---
 
