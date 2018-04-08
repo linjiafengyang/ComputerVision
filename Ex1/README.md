@@ -1,5 +1,6 @@
-## The file "Ex1.cpp" includes the answers for all of the questions.
-### The file "Ex1.1.cpp" is the answer for the first question, and so on.
+# Ex1
+The file "Ex1.cpp" includes the answers for all of the questions.
+The file "Ex1.1.cpp" is the answer for the first question, and so on.
 
 ---
 
