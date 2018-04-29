@@ -27,19 +27,19 @@ EdgeDetect::EdgeDetect(string input, string output, string mode, int number, int
 		if (width == 0 || height == 0) {
 			cout << "Cannot open or find the image" << endl;
 		}
-		image.display("Origin Image"); // 脧脭脢戮脭颅脥录脧帽
+		image.display("Origin Image"); // 显示原图像
 		outputImage = image;
 
-		toGrayScale(); // 陆酶脨脨禄脪露脠禄炉麓娄脌铆
-		filter = createFilter(gFilterX, gFilterY, sigma); // 虏煤脡煤赂脽脣鹿脗脣虏篓脝梅
-		CImg<float> gFiltered = useFilter(grayImage, filter); // 陆酶脨脨赂脽脣鹿脗脣虏篓
+		toGrayScale(); // 进行灰度化处理
+		filter = createFilter(gFilterX, gFilterY, sigma); // 产生高斯滤波器
+		CImg<float> gFiltered = useFilter(grayImage, filter); // 进行高斯滤波
 
-		/*Canny录矛虏芒*/
+		/*Canny检测*/
 		CImg<float> angles;
-		CImg<float> sFiltered = sobel(gFiltered, angles); // 虏煤脡煤sobel脣茫脳脫虏垄录脝脣茫脤脻露脠路霉脰碌潞脥陆脟露脠脥录脧帽
-		CImg<float> nms = nonMaxSupp(sFiltered, angles); // 路脟脳卯麓贸禄炉脪脰脰脝麓娄脌铆
-		thresholdImage = threshold(nms, thresholdLow, thresholdHigh); // 脣芦茫脨脰碌麓娄脌铆
-		thresholdImage.display("Threshold Image"); // 脧脭脢戮canny录矛虏芒鲁枚碌脛卤脽脭碌
+		CImg<float> sFiltered = sobel(gFiltered, angles); // 产生sobel算子并计算梯度幅值和角度图像
+		CImg<float> nms = nonMaxSupp(sFiltered, angles); // 非最大化抑制处理
+		thresholdImage = threshold(nms, thresholdLow, thresholdHigh); // 双阈值处理
+		thresholdImage.display("Threshold Image"); // 显示canny检测出的边缘
 
 		for (int i = 0; i < thetaSize; i++) {
 			setSin.push_back(sin(2 * PI * i / thetaSize));
@@ -47,11 +47,11 @@ EdgeDetect::EdgeDetect(string input, string output, string mode, int number, int
 		}
 
 		pointNumber = number;
-		houghLinesTransform(thresholdImage); // 禄么路貌脰卤脧脽卤盲禄禄
-		houghLinesDetect(); // 禄么路貌脰卤脧脽录矛虏芒
+		houghLinesTransform(thresholdImage); // 霍夫直线变换
+		houghLinesDetect(); // 霍夫直线检测
 
-		drawEdge(); // 脙猫禄忙禄么路貌卤盲禄禄录矛虏芒鲁枚碌脛卤脽脭碌
-		drawPoint(); // 脙猫禄忙禄么路貌卤盲禄禄录矛虏芒鲁枚碌脛陆脟碌茫
+		drawEdge(); // 描绘霍夫变换检测出的边缘
+		drawPoint(); // 描绘霍夫变换检测出的角点
 		outputImage.resize(width, height);
 		outputImage.save(output.c_str());
 	}
@@ -62,7 +62,7 @@ EdgeDetect::EdgeDetect(string input, string output, string mode, int number, int
 		if (width == 0 || height == 0) {
 			cout << "Cannot open or find the image" << endl;
 		}
-		image.display("Origin Image"); // 脧脭脢戮脭颅脥录脧帽
+		image.display("Origin Image"); // 显示原图像
 		outputImage = image;
 
 		CImg<unsigned char> crImage(image);
@@ -72,29 +72,29 @@ EdgeDetect::EdgeDetect(string input, string output, string mode, int number, int
 		myCanny.canny(grey, crImage.width(), crImage.height(), 2.5f, 7.5f, 4.5f, 16);
 		CImg<double> edge(myCanny.result, image.width(), image.height());
 		thresholdImage = edge;
-		thresholdImage.display("Threshold Image"); // 脧脭脢戮canny录矛虏芒鲁枚碌脛卤脽脭碌
+		thresholdImage.display("Threshold Image"); // 显示canny检测出的边缘
 
 		circleNumber = number;
 		minRadius = minR;
 		maxRadius = maxR;
 
-		houghCirclesTransform(thresholdImage, minRadius, maxRadius); // 禄么路貌脭虏卤盲禄禄
+		houghCirclesTransform(thresholdImage, minRadius, maxRadius); // 霍夫圆变换
 		outputImage.save(output.c_str());
 	}
 }
 
 void EdgeDetect::toGrayScale() {
-	grayImage = CImg<float>(image._width, image._height, 1, 1); //脨脗陆篓脪禄赂枚禄脪露脠脥录脧帽 
-	//虏脢脡芦脥录脧帽脳陋脦陋禄脪露脠脥录脧帽碌脛鹿芦脢陆拢潞R * 0.2989 + G * 0.5870 + B * 0.1140
+	grayImage = CImg<float>(image._width, image._height, 1, 1); //新建一个灰度图像 
+	//彩色图像转为灰度图像的公式：R * 0.2989 + G * 0.5870 + B * 0.1140
 	cimg_forXY(image, x, y) {
 		grayImage(x, y) = image(x, y, 0) * 0.2989 + image(x, y, 1) * 0.5870 + image(x, y, 2) * 0.1140;
 	}
 }
 
-/*赂脽脣鹿脗脣虏篓脝梅*/
+/*高斯滤波器*/
 vector<vector<float>> EdgeDetect::createFilter(int row, int col, float tempSigma) {
 	float sum = 0, temp = 2.0 * tempSigma * tempSigma;
-	/*鲁玫脢录禄炉*/
+	/*初始化*/
 	for (int i = 0; i < row; i++) {
 		vector<float> v(col, 0);
 		filter.push_back(v);
@@ -102,11 +102,11 @@ vector<vector<float>> EdgeDetect::createFilter(int row, int col, float tempSigma
 
 	for (int i = -row / 2; i <= row / 2; i++) {
 		for (int j = -col / 2; j <= col / 2; j++) {
-			filter[i + row / 2][j + col / 2] = exp(-(i * i + j * j) / temp) / sqrt(PI * temp); // 赂脽脣鹿潞炉脢媒
+			filter[i + row / 2][j + col / 2] = exp(-(i * i + j * j) / temp) / sqrt(PI * temp); // 高斯函数
 			sum += filter[i + row / 2][j + col / 2];
 		}
 	}
-	// 鹿茅脪禄禄炉
+	// 归一化
 	for (int i = 0; i < row; i++) {
 		for (int j = 0; j < col; j++) {
 			filter[i][j] /= sum;
@@ -115,7 +115,7 @@ vector<vector<float>> EdgeDetect::createFilter(int row, int col, float tempSigma
 	return filter;
 }
 
-/*陆酶脨脨赂脽脣鹿脗脣虏篓*/
+/*进行高斯滤波*/
 CImg<float> EdgeDetect::useFilter(CImg<float>& img, vector<vector<float>>& filt) {
 	int size = filt.size() / 2;
 	CImg<float> filtered(img._width - 2 * size, img._height - 2 * size, 1, 1);
@@ -124,7 +124,7 @@ CImg<float> EdgeDetect::useFilter(CImg<float>& img, vector<vector<float>>& filt)
 			float sum = 0;
 			for (int x = 0; x < filt.size(); x++) {
 				for (int y = 0; y < filt.size(); y++) {
-					sum += filt[x][y] * (float)(img(i + x - size, j + y - size)); // 赂脽脣鹿脗脣虏篓
+					sum += filt[x][y] * (float)(img(i + x - size, j + y - size)); // 高斯滤波
 				}
 			}
 			filtered(i - size, j - size) = sum;
@@ -133,9 +133,9 @@ CImg<float> EdgeDetect::useFilter(CImg<float>& img, vector<vector<float>>& filt)
 	return filtered;
 }
 
-/*脌没脫脙sobel脣茫脳脫录脝脣茫脤脻露脠路霉脰碌潞脥陆脟露脠脥录脧帽*/
+/*利用sobel算子计算梯度幅值和角度图像*/
 CImg<float> EdgeDetect::sobel(CImg<float>& gFiltered, CImg<float>& angles) {
-	/*sobel脣茫脳脫*/
+	/*sobel算子*/
 	vector<vector<float>> xFilter(3, vector<float>(3, 0)), yFilter(3, vector<float>(3, 0));
 	xFilter[0][0] = xFilter[2][0] = yFilter[0][0] = yFilter[0][2] = -1;
 	xFilter[0][2] = xFilter[2][2] = yFilter[2][0] = yFilter[2][2] = 1;
@@ -148,7 +148,7 @@ CImg<float> EdgeDetect::sobel(CImg<float>& gFiltered, CImg<float>& angles) {
 
 	for (int i = size; i < gFiltered._width - size; i++) {
 		for (int j = size; j < gFiltered._height - size; j++) {
-			/*录脝脣茫脤脻露脠路霉露脠gx,gy*/
+			/*计算梯度幅度gx,gy*/
 			float sumX = 0, sumY = 0;
 			for (int x = 0; x < xFilter.size(); x++) {
 				for (int y = 0; y < yFilter.size(); y++) {
@@ -163,7 +163,7 @@ CImg<float> EdgeDetect::sobel(CImg<float>& gFiltered, CImg<float>& angles) {
 				filteredImage(i - size, j - size) = sqrt(sumX * sumX + sumY * sumY);
 			}
 
-			/*录脝脣茫脤脻露脠路陆脧貌*/
+			/*计算梯度方向*/
 			if (sumX == 0) {
 				angles(i - size, j - size) = 90;
 			}
@@ -175,7 +175,7 @@ CImg<float> EdgeDetect::sobel(CImg<float>& gFiltered, CImg<float>& angles) {
 	return filteredImage;
 }
 
-/*露脭脤脻露脠路霉脰碌脥录脧帽脫娄脫脙路脟脳卯麓贸禄炉脪脰脰脝*/
+/*对梯度幅值图像应用非最大化抑制*/
 CImg<float> EdgeDetect::nonMaxSupp(CImg<float>& sFiltered, CImg<float>& angles) {
 	CImg<float> nms(sFiltered._width - 2, sFiltered._height - 2, 1, 1);
 	for (int i = 1; i < sFiltered._width - 1; i++) {
@@ -183,25 +183,25 @@ CImg<float> EdgeDetect::nonMaxSupp(CImg<float>& sFiltered, CImg<float>& angles) 
 			float angle = angles(i, j);
 			nms(i - 1, j - 1) = sFiltered(i, j);
 
-			/*脣庐脝陆卤脽脭碌*/
+			/*水平边缘*/
 			if ((angle > -22.5 && angle <= 22.5) || (angle > 157.5 && angle <= -157.5)) {
 				if (sFiltered(i, j) < sFiltered(i, j + 1) || sFiltered(i, j) < sFiltered(i, j - 1)) {
 					nms(i - 1, j - 1) = 0;
 				}
 			}
-			/*+45露脠卤脽脭碌*/
+			/*+45度边缘*/
 			if ((angle > -67.5 && angle <= -22.5) || (angle > 112.5 && angle <= 157.5)) {
 				if (sFiltered(i, j) < sFiltered(i - 1, j + 1) || sFiltered(i, j) < sFiltered(i + 1, j - 1)) {
 					nms(i - 1, j - 1) = 0;
 				}
 			}
-			/*麓鹿脰卤卤脽脭碌*/
+			/*垂直边缘*/
 			if ((angle > -112.5 && angle <= -67.5) || (angle > 67.5 && angle <= 112.5)) {
 				if (sFiltered(i, j) < sFiltered(i + 1, j) || sFiltered(i, j) < sFiltered(i - 1, j)) {
 					nms(i - 1, j - 1) = 0;
 				}
 			}
-			/*-45露脠卤脽脭碌*/
+			/*-45度边缘*/
 			if ((angle > -157.5 && angle <= -112.5) || (angle > 22.5 && angle <= 67.5)) {
 				if (sFiltered(i, j) < sFiltered(i + 1, j + 1) || sFiltered(i, j) < sFiltered(i - 1, j - 1)) {
 					nms(i - 1, j - 1) = 0;
@@ -212,7 +212,7 @@ CImg<float> EdgeDetect::nonMaxSupp(CImg<float>& sFiltered, CImg<float>& angles) 
 	return nms;
 }
 
-/*脫脙脣芦茫脨脰碌麓娄脌铆潞脥脕卢陆脫路脰脦枚脌麓录矛虏芒虏垄脕卢陆脫卤脽脭碌*/
+/*用双阈值处理和连接分析来检测并连接边缘*/
 CImg<float> EdgeDetect::threshold(CImg<float>& img, int low, int high) {
 	low = (low > 255) ? 255 : low;
 	high = (high > 255) ? 255 : high;
@@ -222,10 +222,10 @@ CImg<float> EdgeDetect::threshold(CImg<float>& img, int low, int high) {
 		for (int j = 0; j < img._height; j++) {
 			edgeMatch(i, j) = img(i, j);
 			if (edgeMatch(i, j) > high) {
-				edgeMatch(i, j) = 255; // 脠莽鹿没赂脽脫脷赂脽茫脨脰碌拢卢赂鲁脰碌脦陋255
+				edgeMatch(i, j) = 255; // 如果高于高阈值，赋值为255
 			}
 			else if (edgeMatch(i, j) < low) {
-				edgeMatch(i, j) = 0; // 脠莽鹿没碌脥脫脷碌脥茫脨脰碌拢卢赂鲁脰碌脦陋0
+				edgeMatch(i, j) = 0; // 如果低于低阈值，赋值为0
 			}
 			else {
 				bool ifHigh = false, ifBetween = false;
@@ -271,10 +271,10 @@ CImg<float> EdgeDetect::threshold(CImg<float>& img, int low, int high) {
 	return edgeMatch;
 }
 
-/*禄么路貌脰卤脧脽卤盲禄禄*/
+/*霍夫直线变换*/
 void EdgeDetect::houghLinesTransform(CImg<float>& img) {
 	int width = img._width, height = img._height, maxLength, row, col;
-	maxLength = sqrt(pow(width / 2, 2) + pow(height / 2, 2)); // 陆酶脨脨禄么路貌驴脮录盲录芦脳酶卤锚卤盲禄禄
+	maxLength = sqrt(pow(width / 2, 2) + pow(height / 2, 2)); // 进行霍夫空间极坐标变换
 	row = thetaSize;
 	col = maxLength;
 
@@ -286,7 +286,7 @@ void EdgeDetect::houghLinesTransform(CImg<float>& img) {
 		if (value != 0) {
 			int x0 = x - width / 2, y0 = height / 2 - y;
 			for (int i = 0; i < thetaSize; i++) {
-				/*陆酶脨脨voting脥露脝卤*/
+				/*进行voting投票*/
 				p = x0 * setCos[i] + y0 * setSin[i];
 				if (p >= 0 && p < maxLength) {
 					houghImage(p, i)++;
@@ -296,7 +296,7 @@ void EdgeDetect::houghLinesTransform(CImg<float>& img) {
 	}
 }
 
-/*禄么路貌脰卤脧脽录矛虏芒*/
+/*霍夫直线检测*/
 void EdgeDetect::houghLinesDetect() {
 	int width = houghImage._width, height = houghImage._height, size = windowSize, max;
 	for (int i = 0; i < height; i += size / 2) {
@@ -305,13 +305,13 @@ void EdgeDetect::houghLinesDetect() {
 			for (int y = i; y < i + size; ++y) {
 				for (int x = j; x < j + size; ++x) {
 					if (houghImage._atXY(x, y) < max) {
-						houghImage._atXY(x, y) = 0; // 掳脩虏禄脢脟卤脽脭碌碌茫碌脛碌茫脠楼碌么
+						houghImage._atXY(x, y) = 0; // 把不是边缘点的点去掉
 					}	
 				}
 			}
 		}
 	}
-	/*陆芦禄么路貌脥录脧帽脰脨脣霉脫脨虏禄脦陋0碌脛碌茫露脭脫娄脰卤脧脽碌脛脨卤脗脢潞脥陆脴戮脿麓忙脠毛脢媒脳茅*/
+	/*将霍夫图像中所有不为0的点对应直线的斜率和截距存入数组*/
 	cimg_forXY(houghImage, x, y) {
 		if (houghImage(x, y) != 0) {
 			lines.push_back(make_pair(y, x));
@@ -320,7 +320,7 @@ void EdgeDetect::houghLinesDetect() {
 	}
 }
 
-/*录脝脣茫禄么路貌驴脮录盲脰卤脧脽陆禄碌茫*/
+/*计算霍夫空间直线交点*/
 int EdgeDetect::getMaxHough(CImg<float>& img, int& size, int& y, int& x) {
 	int width = (x + size > img._width) ? img._width : x + size;
 	int height = (y + size > img._height) ? img._height : y + size;
@@ -333,16 +333,16 @@ int EdgeDetect::getMaxHough(CImg<float>& img, int& size, int& y, int& x) {
 	return max;
 }
 
-/*脙猫禄忙脣霉录矛虏芒鲁枚碌脛卤脽脭碌*/
+/*描绘所检测出的边缘*/
 void EdgeDetect::drawEdge() {
 	int width = image._width, height = image._height, maxLength;
 	maxLength = sqrt(pow(width / 2, 2) + pow(height / 2, 2));
 
 	edge = CImg<float>(width, height, 1, 1, 0);
 	sortLineWeight = lineWeight;
-	sort(sortLineWeight.begin(), sortLineWeight.end(), greater<int>()); // 陆芦脌脹录脫戮脴脮贸麓脫麓贸碌陆脨隆陆酶脨脨脜脜脨貌
+	sort(sortLineWeight.begin(), sortLineWeight.end(), greater<int>()); // 将累加矩阵从大到小进行排序
 
-	vector<pair<int, int>> result; // 麓忙路脜脌脹录脫脰碌脳卯麓贸碌脛卤脽脭碌脰卤脧脽露脭脫娄脨卤脗脢潞脥陆脴戮脿
+	vector<pair<int, int>> result; // 存放累加值最大的边缘直线对应斜率和截距
 	for (int i = 0; i < pointNumber; i++) {
 		int weight = sortLineWeight[i], index;
 		vector<int>::iterator iter = find(lineWeight.begin(), lineWeight.end(), weight);
@@ -351,7 +351,7 @@ void EdgeDetect::drawEdge() {
 	}
 	for (int i = 0; i < result.size(); i++) {
 		int theta = result[i].first, p = result[i].second;
-		/*赂霉戮脻theta潞脥p脟贸鲁枚脨卤脗脢潞脥陆脴戮脿*/
+		/*根据theta和p求出斜率和截距*/
 		cimg_forXY(edge, x, y) {
 			int x0 = x - width / 2, y0 = height / 2 - y;
 			if (p == (int)(x0 * setCos[theta] + y0 * setSin[theta])) {
@@ -362,7 +362,7 @@ void EdgeDetect::drawEdge() {
 	}
 }
 
-/*脙猫禄忙脣霉录矛虏芒鲁枚碌脛陆脟碌茫*/
+/*描绘所检测出的角点*/
 void EdgeDetect::drawPoint() {
 	unsigned char red[3] = { 255, 0, 0 };
 	for (int y = 0; y < outputImage._height - 1; y++) {
@@ -380,7 +380,7 @@ void EdgeDetect::drawPoint() {
 	outputImage.display("Point Detect");
 }
 
-/*禄么路貌脭虏卤盲禄禄*/
+/*霍夫圆变换*/
 void EdgeDetect::houghCirclesTransform(CImg<float>& img, int minR, int maxR) {
 	int width = img._width, height = img._height, max = 0;
 
@@ -394,7 +394,7 @@ void EdgeDetect::houghCirclesTransform(CImg<float>& img, int minR, int maxR) {
 				for (int i = 0; i < thetaSize; i++) {
 					int x0 = x - r * setCos[i];
 					int y0 = y - r * setSin[i];
-					/*陆酶脨脨voting脥露脝卤*/
+					/*进行voting投票*/
 					if (x0 > 0 && x0 < width && y0 > 0 && y0 < height) {
 						houghImage(x0, y0)++;
 					}
@@ -402,7 +402,7 @@ void EdgeDetect::houghCirclesTransform(CImg<float>& img, int minR, int maxR) {
 			}
 		}
 
-		/*脙驴麓脦卤茅脌煤脥锚r潞贸拢卢脮脪碌陆hough脌茂脙忙碌脛脳卯麓贸脥露脝卤脢媒拢卢脮芒赂枚脥露脝卤脢媒卤铆脢戮碌卤脟掳r碌脛脦脟潞脧鲁脤露脠拢卢脠禄潞贸脫脙脥露脝卤脢媒脳卯麓贸碌脛r脳梅脦陋脳卯潞脙碌脛r*/
+		/*每次遍历完r后，找到hough里面的最大投票数，这个投票数表示当前r的吻合程度，然后用投票数最大的r作为最好的r*/
 		for (int x = 0; x < width; x++) {
 			for (int y = 0; y < height; y++) {
 				if (houghImage(x, y) > max) {
@@ -425,7 +425,7 @@ void EdgeDetect::houghCirclesTransform(CImg<float>& img, int minR, int maxR) {
 				for (int j = 0; j < thetaSize; j++) {
 					int x0 = x - voteSet[i].second * setCos[j];
 					int y0 = y - voteSet[i].second * setSin[j];
-					/*陆酶脨脨voting脥露脝卤*/
+					/*进行voting投票*/
 					if (x0 > 0 && x0 < width && y0 > 0 && y0 < height) {
 						houghImage(x0, y0)++;
 					}
@@ -440,7 +440,7 @@ void EdgeDetect::houghCirclesTransform(CImg<float>& img, int minR, int maxR) {
 }
 
 void EdgeDetect::houghCirclesDetect() {
-	/*陆芦禄么路貌脥录脧帽脰脨脣霉脫脨虏禄脦陋0碌脛碌茫露脭脫娄脭虏脨脛碌脛脳酶卤锚麓忙脠毛脢媒脳茅*/
+	/*将霍夫图像中所有不为0的点对应圆心的坐标存入数组*/
 	cimg_forXY(houghImage, x, y) {
 		if (houghImage(x, y) != 0) {
 			circles.push_back(make_pair(x, y));
@@ -454,7 +454,7 @@ void EdgeDetect::drawCircle(int r) {
 	unsigned char red[3] = { 255, 0, 0 };
 
 	sortCircleWeight = circleWeight;
-	sort(sortCircleWeight.begin(), sortCircleWeight.end(), greater<int>()); // 陆芦脌脹录脫戮脴脮贸麓脫麓贸碌陆脨隆陆酶脨脨脜脜脨貌
+	sort(sortCircleWeight.begin(), sortCircleWeight.end(), greater<int>()); // 将累加矩阵从大到小进行排序
 
 	while (1) {
 		int weight = sortCircleWeight[count], index;
@@ -466,7 +466,7 @@ void EdgeDetect::drawCircle(int r) {
 		int i;
 		for (i = 0; i < center.size(); i++) {
 			if (sqrt(pow((center[i].first - a), 2) + pow((center[i].second - b), 2)) < minRadius) {
-				break; // 脜脨露脧录矛虏芒鲁枚脌麓碌脛脭虏脨脛脳酶卤锚脢脟路帽赂煤脪脩录矛虏芒碌脛脭虏脨脛脳酶卤锚碌脛戮脿脌毛拢卢脠莽鹿没戮脿脌毛鹿媒脨隆拢卢脛卢脠脧脢脟脥卢赂枚脭虏
+				break; // 判断检测出来的圆心坐标是否跟已检测的圆心坐标的距离，如果距离过小，默认是同个圆
 			}
 		}
 		if (i == center.size()) {
