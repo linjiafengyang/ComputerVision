@@ -28,6 +28,8 @@
 g++ -std=c++11 -o main.exe main.cpp Process.cpp Canny.cpp Hough.cpp ImageWarping.cpp ImageSegmentation.cpp -O2 -lgdi32
 ```
 
+PS：这里由于数据集bmp图像太大，我没传上来！
+
 然后在Windows Powershell下运行：
 
 
